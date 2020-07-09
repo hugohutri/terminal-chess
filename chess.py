@@ -76,7 +76,6 @@ if __name__ == '__main__':
                 _, mx, my, _, _ = curses.getmouse()
                 i = my
                 j = int(mx/3)
-                
                 click(i,j)
 
                 print_board()
