@@ -1,6 +1,6 @@
 class Piece:
-    def __init__(self, type, icon, color, position):
-        self.type = type
+    def __init__(self, name, icon, color, position):
+        self.name = name
         self.icon = icon
         self.color = color
         self.position = position

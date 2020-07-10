@@ -1,5 +1,9 @@
+#!/usr/bin/python3
+
 from Piece import Piece
 from icons import *
+import numpy as np
+import copy
 import operator
 
 def add(a, b):
@@ -13,8 +17,9 @@ BLACK = 1
 
 turn = 0
 selected_piece = None
+state = "state"
 
-board = [
+board = np.array([
     [None,None,None,None,None,None,None,None],
     [None,None,None,None,None,None,None,None],
     [None,None,None,None,None,None,None,None],
@@ -23,6 +28,22 @@ board = [
     [None,None,None,None,None,None,None,None],
     [None,None,None,None,None,None,None,None],
     [None,None,None,None,None,None,None,None]
+])
+
+previous_move = {
+    "from": None,
+    "to": None
+}
+
+KNIGHT_MOVES = [
+    (1,2),
+    (1,-2),
+    (-1,2),
+    (-1,-2),
+    (2,1),
+    (2,-1),
+    (-2,1),
+    (-2,-1)
 ]
 
 def get_selected_square():
@@ -40,6 +61,9 @@ def get_turn():
     if turn%2 == WHITE:
         return "white"
     return "black"
+
+def get_state():
+    return state
 
 def init_board():
     global turn
@@ -73,27 +97,126 @@ def init_board():
     for i in range(8):
         board[6][i] = Piece("pawn",BLACK_PAWN, BLACK,(6,i))
 
+def is_inside(pos):
+    i = pos[0]
+    j = pos[1]
+    return 0 <= i <= 7 and 0 <= j <= 7
+    
 def get_piece(position):
-    return board[position[0]][position[1]]
+    if is_inside(position):
+        return board[position[0]][position[1]]
+    return None
+
+def contains_piece(loc, color, name = None):
+    piece = get_piece(loc)
+    if piece and piece.color == color:
+        if name:
+            if piece.name == name:
+                return True
+            else:
+                return False
+        return True
+    return None
+
+def get_king(color):
+    for row in board:
+        for col in row:
+            if col and col.name == "king" and col.color == color:
+                return col
+    return None
+
+def is_under_attack(loc, enemy_color):
+    y = loc[0]
+    x = loc[1]
+
+    # Checks for enemy king, queen, bishop and rook
+    for i in [-1,0,1]:
+        for j in [-1,0,1]:
+            step = (i,j)
+            if step == (0,0): continue
+            square = add(loc,step)
+            if contains_piece(square, enemy_color, "king"):
+                return True
+            
+            while is_inside(square):
+                if contains_piece(square, int(not enemy_color)):
+                    # Allied piece blocks the path
+                    break
+
+                if contains_piece(square, enemy_color, "queen"):
+                    return True
+                if i == 0 or j == 0:
+                    # Horizontal and vertical
+                    if contains_piece(square, enemy_color, "rook"):
+                        print(square)
+                        print(loc)
+                        return True
+                else:
+                    # Diagonal
+                    if contains_piece(square, enemy_color, "bishop"):
+                        return True
+                square = add(square,step)
+    
+    # Checks for enemy knight
+    for knight_move in KNIGHT_MOVES:
+        square = add(loc, knight_move)
+        if is_inside(square):
+            if contains_piece(square, enemy_color, "knight"):
+                print("j")
+                return True
+    
+    # Checks for enemy pawn
+    dir = 1 if enemy_color == WHITE else -1
+    left = (-dir, -1)
+    right = (-dir, 1)
+    left_square = add(loc,left)
+    right_square = add(loc,right)
+    if is_inside(left_square):
+        if contains_piece(left_square, enemy_color, "pawn"):
+            print("ri")
+            return True
+    if is_inside(right_square):
+        if contains_piece(right_square, enemy_color, "pawn"):
+            print("le")
+            return True
+
+    return False
+            
 
 def move_pawn(piece, dest):
     pos = piece.position
-    dir = 1 if piece.color == WHITE else -1
-    if pos[1] == dest[1]:
-        if(get_piece(dest)): return False
-        # One step
-        if pos[0]+dir == dest[0]:
-            return True
-        # Double step
-        if ((piece.color == WHITE and dest[0]-2*dir == 1) or 
-            (piece.color == BLACK and dest[0]-2*dir == 6)):
-            return True
+    color = piece.color
+    dir = 1 if color == WHITE else -1
     if get_piece(dest):
         # Eat en enemy
         if pos[0]+dir == dest[0]:
             if ((pos[1] == dest[1]+1) or
                 (pos[1] == dest[1]-1)):
-                return True           
+                return True
+    else:   
+        if pos[1] == dest[1]:
+            # One step
+            if pos[0]+dir == dest[0]:
+                return True
+            # Double step
+            if ((color == WHITE and dest[0]-2*dir == 1) or 
+                (color == BLACK and dest[0]-2*dir == 6)):
+                return True
+        else:
+            # Special move
+            adjanced_piece = None
+            if (color == WHITE and add(pos,(1,1)) == dest):
+                adjanced_piece = get_piece(add(pos,(0,1)))
+            if (color == WHITE and add(pos,(1,-1)) == dest):
+                adjanced_piece = get_piece(add(pos,(0,-1)))  
+            if (color == BLACK and add(pos,(-1,1)) == dest):
+                adjanced_piece = get_piece(add(pos,(0,1)))  
+            if (color == BLACK and add(pos,(-1,-1)) == dest):
+                adjanced_piece = get_piece(add(pos,(0,-1)))  
+
+            if(adjanced_piece and (adjanced_piece.name == "pawn") and  (adjanced_piece.color != color) and (adjanced_piece.get_moves() == 1) and (adjanced_piece.position == previous_move["to"])):
+                board[adjanced_piece.position[0]][adjanced_piece.position[1]] = None
+                return True
     return False
 
 def move_rook(piece, dest):
@@ -217,15 +340,31 @@ def move(piece, dest):
         "queen": move_queen,
         "king": move_king
     }
-    move_piece = switcher.get(piece.type)
+    global board
+    global state
+    old_board = copy.deepcopy(board)
+    move_piece = switcher.get(piece.name)
     i = piece.position[0]
     j = piece.position[1]
     legal_move = move_piece(piece, dest)
-    if not legal_move:
+    check = is_under_attack(get_king(turn%2).position,(turn+1)%2)
+    if not legal_move or check:
+        board = copy.deepcopy(old_board)
+        if check:
+            state = "check"
         return
     piece.did_move()
     piece.position = dest
     board[i][j] = None
     board[dest[0]][dest[1]] = piece
+
+    global previous_move
+    previous_move = {
+        "from": (i,j),
+        "to": (dest[0],dest[1])
+    }
     
     end_turn()
+    enemy_check = is_under_attack(get_king(turn%2).position,(turn+1)%2)
+    if enemy_check:
+        state = "check"

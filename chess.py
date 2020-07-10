@@ -48,7 +48,7 @@ def get_square_color(i,j,p):
 
 def get_margin_left():
     if SCREEN_CENTERED:
-        margin = curses.COLS / 2 - 4*3
+        margin = max(curses.COLS / 2 - 4*3, 0)
         return int(margin)
     return 0
 
@@ -59,6 +59,9 @@ def print_board():
         for j in range(8):
             print_square(i,j,margin_left)  
     screen.addstr(BOARD_MARGIN_TOP + 9,margin_left,f"{get_turn().capitalize()}'s turn")
+    screen.addstr(BOARD_MARGIN_TOP + 10,margin_left,f"{get_state().capitalize()}")
+    screen.addstr(BOARD_MARGIN_TOP + 11,margin_left,f"[q] Quit")
+    screen.addstr(BOARD_MARGIN_TOP + 12,margin_left,f"[r] Reset")
 
 def get_square_location(x,y):
     margin_left = get_margin_left()
@@ -66,17 +69,10 @@ def get_square_location(x,y):
     j = int((x-margin_left)/3)
     return i, j
 
-if __name__ == '__main__':
-    screen = curses.initscr()
-    curses.noecho()
-    curses.cbreak()
-    curses.curs_set(0)
+def init_colors():
     curses.start_color()
     curses.use_default_colors()
-    screen.keypad(1) 
-    curses.mousemask(1)
 
-    # Colors
     curses.init_color(BG_BLACK, 627, 321, 176)
     curses.init_color(BG_WHITE, 770, 721, 529)
     curses.init_color(FG_BLACK, 0, 0, 0)
@@ -90,12 +86,20 @@ if __name__ == '__main__':
     curses.init_pair(WHITE_ON_SELECTION, FG_WHITE, BG_SELECTION)
     curses.init_pair(BLACK_ON_SELECTION, FG_BLACK, BG_SELECTION)
 
+if __name__ == '__main__':
+    screen = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    curses.curs_set(0)
+    screen.keypad(1) 
+    curses.mousemask(1)
+
+    init_colors()
     init_board()
+    print_board()
+    screen.refresh()
 
     try:
-        print_board()
-        screen.refresh()
-
         while True:
             event = screen.getch() 
             if event == ord("q"): break 
