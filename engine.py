@@ -25,6 +25,10 @@ board = [
     [None,None,None,None,None,None,None,None]
 ]
 
+def get_selected_square():
+    if selected_piece:
+        return selected_piece.position
+    return None
 
 def end_turn():
     global turn
@@ -32,14 +36,28 @@ def end_turn():
     turn = turn + 1
     selected_piece = None
 
+def get_turn():
+    if turn%2 == WHITE:
+        return "white"
+    return "black"
+
 def init_board():
+    global turn
+    global selected_piece
+    turn = 0
+    selected_piece = None
+
+    for i in range(8):
+        for j in range(8):
+            board[i][j] = None    
+    
     board[0][0] = Piece("rook",WHITE_ROOK, WHITE,(0,0))
-    #board[0][1] = Piece("knight",WHITE_KNIGHT, WHITE,(0,1))
-    #board[0][2] = Piece("bishop",WHITE_BISHOP, WHITE,(0,2))
+    board[0][1] = Piece("knight",WHITE_KNIGHT, WHITE,(0,1))
+    board[0][2] = Piece("bishop",WHITE_BISHOP, WHITE,(0,2))
     board[0][3] = Piece("king",WHITE_KING, WHITE,(0,3))
-    #board[0][4] = Piece("queen",WHITE_QUEEN, WHITE,(0,4))
-    #board[0][5] = Piece("bishop",WHITE_BISHOP, WHITE,(0,5))
-    #board[0][6] = Piece("knight",WHITE_KNIGHT, WHITE,(0,6))
+    board[0][4] = Piece("queen",WHITE_QUEEN, WHITE,(0,4))
+    board[0][5] = Piece("bishop",WHITE_BISHOP, WHITE,(0,5))
+    board[0][6] = Piece("knight",WHITE_KNIGHT, WHITE,(0,6))
     board[0][7] = Piece("rook",WHITE_ROOK, WHITE,(0,7))
     for i in range(8):
         board[1][i] = Piece("pawn",WHITE_PAWN, WHITE,(1,i))
@@ -211,4 +229,3 @@ def move(piece, dest):
     board[dest[0]][dest[1]] = piece
     
     end_turn()
-    print(f" Turn {turn+1}")
